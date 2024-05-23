@@ -1,0 +1,148 @@
+﻿@page "/"
+@using CarRental.Business.Classes
+@using CarRental.Common.Classes
+@using CarRental.Common.Interfaces
+@using CarRental.Common.Enums
+@inject BookingProcessor bp
+@inject NewEntities ne
+
+<PageTitle>Car Rental Assignment</PageTitle>
+
+<h1>Car Rental Assignment</h1>
+
+<div class="alert alert-danger" role="alert" hidden="@bp.IsAlertMessageHidden">
+    @bp.AlertMessage
+</div>
+
+<div class="row">
+    <h2>Customers</h2>
+    <table class="table">
+        <thead>
+            <tr class="table-dark">
+                <th scope="col">SSN</th>
+                <th scope="col">First Name</th>
+                <th scope="col">Last Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input @bind=ne.NewCustomer.Ssn type="text" placeholder="SSN" /></td>
+                <td><input @bind=ne.NewCustomer.LastName type="text" placeholder="Last Name" /></td>
+                <td>
+                    <input @bind=ne.NewCustomer.FirstName type="text" placeholder="First Name" />
+                    <button class="ms-3 btn btn-outline-success" @onclick="() => bp.AddCustomer(ne.NewCustomer)">Add</button>
+                </td>
+            </tr>
+            @foreach (var customer in bp.GetCustomers())
+            {
+                <tr>
+                    <th>@customer.Ssn</th>
+                    <td>@customer.FirstName</td>
+                    <td>@customer.LastName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+</div>
+<br />
+<div class="row">
+    <h2>Vehicles</h2>
+    <table class="table">
+        <thead>
+            <tr class="table-dark">
+                <th scope="col">RegNo</th>
+                <th scope="col">Make</th>
+                <th scope="col">Odometer</th>
+                <th scope="col">Cost Km</th>
+                <th scope="col">Vehicle Type</th>
+                <th scope="col">$ Day</th>
+                <th scope="col">Action</th>
+                <th scope="col">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input type="text" placeholder="RegNo"  @bind="ne.NewVehicle.RegNo" disabled="@bp._isDisabled" /></td>
+                <td><input type="text" placeholder="Make"   @bind="ne.NewVehicle.Make" disabled="@bp._isDisabled" /></td>
+                <td><input type="text" placeholder="0"      @bind="ne.NewVehicle.Odometer"          disabled="@bp._isDisabled" /></td>
+                <td><input type="text" placeholder="0"      @bind="ne.NewVehicle.CostPerKilometer"  disabled="@bp._isDisabled" /></td>
+                <td>
+                    <select @bind="ne.NewVehicle.VehicleType" disabled="@bp._isDisabled">
+                        @foreach (var vehicleType in bp.VehicleTypeNames)
+                        {
+                            <option>@vehicleType</option>
+                        }
+                    </select>
+                </td>
+                <td></td>
+                <td><button class="btn btn-outline-success" @onclick="(() => bp.AddVehicle(ne.NewVehicle))" disabled="@bp._isDisabled">Add</button></td>
+                <td><span class="rounded-pill text-center text-light bg-warning p-2" hidden="@bp._isHidden">Processing</span></td>
+            </tr>
+            @foreach (var vehicle in bp.GetVehicles())
+            {
+                <tr>
+                    <th>@vehicle.RegNo</th>
+                    <td>@vehicle.Make</td>
+                    <td>@vehicle.Odometer</td>
+                    <td>@vehicle.CostPerKilometer</td>
+                    <td>@vehicle.VehicleType</td>
+                    <td>@vehicle.CostPerDay</td>
+                    <td>
+                        <div class="d-flex">
+                            @if (vehicle.Status == VehicleStatuses.Available)
+                            {
+                                <select class="w-100" disabled="@bp._isDisabled" @bind="bp.SelectedCustomerID">
+                                    @foreach (var cust in bp.GetCustomers())
+                                    {
+                                        <option value="@(cust.Id - 1)">@($"{cust.LastName} {cust.FirstName} ({cust.Ssn})")</option>
+                                    }
+                                </select>
+                                <button class="ms-2 btn btn-outline-primary" @onclick="(() => bp.RentVehicle(vehicle.Id -1, bp.SelectedCustomerID))" disabled="@bp._isDisabled">Rent</button>
+                            }
+                            else if (vehicle.Status == VehicleStatuses.Booked)
+                            {
+                                <input class="w-100" @bind="vehicle.Distance" placeholder="Distance" />
+                                <button @onclick="(() => bp.ReturnVehicle(vehicle.Id - 1, vehicle.Distance))" class="ms-2 btn btn-outline-success">Return</button>
+                            }
+                        </div>
+                    </td>
+                    <td><span class="rounded-pill text-center text-light bg-@(vehicle.Status == VehicleStatuses.Available ? "dark" : "danger") p-2">@vehicle.Status</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<br />
+<div class="row">
+    <h2>Bookings</h2>
+    <table class="table">
+        <thead>
+            <tr class="table-dark">
+                <th scope="col">RegNo</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Km Rented</th>
+                <th scope="col">Km Returned</th>
+                <th scope="col">Rented</th>
+                <th scope="col">Returned</th>
+                <th scope="col">Cost</th>
+                <th scope="col">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var booking in bp.GetBookings())
+            {
+                <tr>
+                    <th>@booking.RegNo</th>
+                    <td>@($"{booking.Customer?.LastName} {booking.Customer?.FirstName} ({booking.Customer?.Ssn})")</td>
+                    <td>@booking.KmRented</td>
+                    <td>@booking.KmReturned</td>
+                    <td>@booking.Rented.ToShortDateString()</td>
+                    <td>@(booking.Status == "Open" ? "" : booking.Returned.ToShortDateString())</td>
+                    <td>@booking.Cost</td>
+                    <td><span class="rounded-pill text-center text-light bg-@(booking.Status == "Open" ? "danger" : "success") p-2">@booking.Status</span></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
